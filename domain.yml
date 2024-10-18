@@ -1,63 +1,91 @@
 version: "3.1"
 
 intents:
-  - apply_scheme
-  - select_scheme
   - greet
-  - query_emergency_contact
-  - emergency_contact_type
-  - affirm
-  - deny
-
-entities:
-  - scheme_name
-  - em_contact_type
+  - goodbye
+  - scheme_apply
+  - certificate_apply
+  - get_emergency_contact
+  - report_grievance
+  - report_disaster
+  - scheme_know
+  - choose_scheme
 
 slots:
   scheme_name:
     type: text
+    influence_conversation: true
     mappings:
       - type: from_entity
         entity: scheme_name
-  em_contact_type:
+  phone_number:
     type: text
+    influence_conversation: false  # Only fill during form
     mappings:
-      - type: from_entity
-        entity: em_contact_type
+      - type: from_text
+        conditions:
+          - active_loop: scheme_apply_form  # Fill this slot only when form is active
+  GPU_location:
+    type: text
+    influence_conversation: false  # Only fill during form
+    mappings:
+      - type: from_text
+        conditions:
+          - active_loop: scheme_apply_form  # Fill this slot only when form is active
+
 
 responses:
   utter_greet:
-    - text: "Hello! How can I assist you today?"
-  utter_service_options:
-    - text: "Here are some options I can help you with:"
+    - text: "Hello, my name is SajiloSewak. How can I assist you today?"
+
+  utter_options:
+    - text: "I can help you with the following:"
       buttons:
-        - title: "Apply for a Scheme"
-          payload: /apply_scheme
-        - title: "Get Emergency Contact"
-          payload: /query_emergency_contact
-  utter_ask_scheme_type:
+        - title: "Know about a scheme"
+          payload: '/know_scheme'
+        - title: "Apply for a scheme"
+          payload: '/scheme_apply'
+
+  utter_list_of_schemes:
+    - text: "Here are some schemes you can apply for:"
+      buttons:
+        - title: "Pradhan Mantri Awas Yojana"
+          payload: '/choose_scheme{"scheme_name": "Pradhan Mantri Awas Yojana"}'
+        - title: "Ayushman Bharat"
+          payload: '/choose_scheme{"scheme_name": "Ayushman Bharat"}'
+        - title: "PM Kisan Yojana"
+          payload: '/choose_scheme{"scheme_name": "PM Kisan Yojana"}'
+        - title: "Startup India"
+          payload: '/choose_scheme{"scheme_name": "Startup India"}'
+        - title: "Mudra Loan Scheme"
+          payload: '/choose_scheme{"scheme_name": "Mudra Loan Scheme"}'
+
+  utter_ask_scheme_name:
     - text: "Which scheme would you like to apply for?"
-      buttons:
-        - title: "PM Awas Yojana"
-          payload: /select_scheme{"scheme_name": "PM Awas Yojana"}
-        - title: "Certificate Issuance"
-          payload: /select_scheme{"scheme_name": "Certificate Issuance"}
-  utter_confirmation_for_filled_form:
-    - text: "Thank you for providing the details. Your application has been submitted."
-  utter_list_of_emergency_numbers:
-    - text: "I can provide emergency contact details for hospitals, police, and fire services. Which one do you need?"
-  utter_contact_details:
-    - text: "Here are the contact details you requested."
+
+  utter_ask_phone_number:
+    - text: "Please provide your contact number."
+
+  utter_ask_GPU_location:
+    - text: "What is your GPU location?"
+    
+  utter_details_submitted:
+    - text: "Your application for the {scheme_name} scheme with contact number {phone_number} from {GPU_location} is successfully submitted. We will connect with you shortly."
+
   utter_goodbye:
-    - text: "Thank you! Have a great day!"
+  - text: "Bye"
 
 forms:
-  apply_scheme_form:
+  scheme_apply_form:
     required_slots:
-      - scheme_name
-  emergency_contact_form:
-    required_slots:
-      - em_contact_type
+      - phone_number
+      - GPU_location
+
+entities:
+  - scheme_name
+  - phone_number
+  - GPU_location
 
 actions:
-  - action_confirm_application
+  - action_submit_scheme_form
+  - validate_scheme_apply_form

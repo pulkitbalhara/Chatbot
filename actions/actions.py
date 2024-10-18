@@ -1,78 +1,64 @@
-# Custom Actions for Sajilo Sewa Chatbot
-# This file contains all the custom actions required to handle specific logic, such as validating forms and storing data.
-
-from rasa_sdk import Action, FormValidationAction
+from typing import Any, Text, Dict, List
+from rasa_sdk import Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
-import pandas as pd
+from rasa_sdk.forms import FormValidationAction
+from rasa_sdk import Action
 
-class ValidateApplySchemeForm(FormValidationAction):
-    def name(self) -> str:
-        return "validate_apply_scheme_form"
+class ValidateSchemeApplyForm(FormValidationAction):
+    def name(self) -> Text:
+        return "validate_scheme_apply_form"
+    
 
-    async def run(self, dispatcher: CollectingDispatcher, tracker, domain):
-        # Custom validation for slots in apply_scheme_form
-        required_slots = ["scheme_name", "person_name", "contact_number", "gp_name"]
-        for slot_name in required_slots:
-            if tracker.get_slot(slot_name) is None:
-                dispatcher.utter_message(text=f"Please provide your {slot_name.replace('_', ' ')}.")
-                return [SlotSet("requested_slot", slot_name)]
-        return []
+    async def validate_phone_number(
+        self,
+        value: Text,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        # Check if the phone number is a valid 10-digit number
+        if value.isdigit() and len(value) == 10:
+            return {"phone_number": value}
+        else:
+            dispatcher.utter_message(text="Please enter a valid 10-digit phone number.")
+            return {"phone_number": None}  # Will trigger re-prompting of the slot
 
-class ActionConfirmApplication(Action):
-    def name(self) -> str:
-        return "action_confirm_application"
+    async def validate_GPU_location(
+        self,
+        value: Text,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        # Check if the GPU location is a non-empty string
+        if len(value) > 0 and len(value) < 50:  # Example condition to avoid overly long strings
+            return {"GPU_location": value}
+        else:
+            dispatcher.utter_message(text="Please provide a valid GPU location.")
+            return {"GPU_location": None}  # Will trigger re-prompting of the slot
+        
 
-    async def run(self, dispatcher: CollectingDispatcher, tracker, domain):
-        # Confirm application details after collecting all required information
+class ActionSubmitSchemeForm(Action):
+
+    def name(self) -> Text:
+        return "action_submit_scheme_form"
+
+    async def run(
+        self, 
+        dispatcher: CollectingDispatcher, 
+        tracker: Tracker, 
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Fetch the values from the slots
         scheme_name = tracker.get_slot("scheme_name")
-        person_name = tracker.get_slot("person_name")
-        dispatcher.utter_message(
-            text=f"Thank you, {person_name}. Your request for the {scheme_name} has been received. We will get back to you shortly."
-        )
-        return []
+        phone_number = tracker.get_slot("phone_number")
+        GPU_location = tracker.get_slot("GPU_location")
 
-class ActionStoreFormData(Action):
-    def name(self) -> str:
-        return "action_store_form_data"
+        # Dynamically create the response
+        response = f"Your application for the {scheme_name} scheme with contact number {phone_number} from {GPU_location} is successfully submitted. We will connect with you shortly."
 
-    async def run(self, dispatcher: CollectingDispatcher, tracker, domain):
-        # Collect slot values
-        scheme_name = tracker.get_slot("scheme_name")
-        person_name = tracker.get_slot("person_name")
-        contact_number = tracker.get_slot("contact_number")
-        gp_name = tracker.get_slot("gp_name")
-
-        # Store data in a pandas DataFrame
-        data = {
-            "scheme_name": [scheme_name],
-            "person_name": [person_name],
-            "contact_number": [contact_number],
-            "gp_name": [gp_name],
-        }
-        df = pd.DataFrame(data)
-
-        # Save DataFrame to a CSV file for persistent storage
-        df.to_csv("form_data.csv", mode='a', index=False, header=False)
-
-        dispatcher.utter_message(text="Your details have been recorded successfully.")
-        return []
-
-class ActionProvideEmergencyContact(Action):
-    def name(self) -> str:
-        return "utter_contact_details"
-
-    async def run(self, dispatcher: CollectingDispatcher, tracker, domain):
-        # Provide emergency contact details based on contact type
-        contact_type = tracker.get_slot("contact_type")
-        contact_details = {
-            "Medical Assistance": "The medical emergency contact number is 108. You can also reach the local health center at 123-456-7890.",
-            "Fire Services": "The fire services contact number is 101.",
-            "Police Assistance": "The police emergency contact number is 100.",
-            "Disaster Helpline": "The disaster helpline number is 1077."
-        }
-        response = contact_details.get(contact_type, "I'm sorry, I don't have the contact information for that service.")
+        # Send the customized response back to the user
         dispatcher.utter_message(text=response)
-        return []
 
-# This actions.py file provides the required actions for form validation, storing user data, and responding to specific user queries.
+        # No slot clearing after submission
+        return []

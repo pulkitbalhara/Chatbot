@@ -1,10 +1,15 @@
 version: "3.1"
-
 rules:
-  - rule: Apply Scheme Form
+
+  - rule: Activate the scheme apply form
     steps:
-      - intent: apply_scheme
-      - action: utter_ask_scheme_type
-      - intent: select_scheme
-      - action: apply_scheme_form
-      - active_loop: apply_scheme_form
+      - intent: choose_scheme
+      - action: scheme_apply_form
+      - active_loop: scheme_apply_form
+
+  - rule: Submit the form
+    condition:
+      - active_loop: scheme_apply_form  # Ensure the form is active and slots are filled
+    steps:
+      - action: action_submit_scheme_form  # Submit the form
+      - active_loop: null  # Deactivate the form
